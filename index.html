@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Innovision Tech - Institute Management System</title>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }
+        .navbar { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h2 { margin: 0; }
+        
+        /* Tabs */
+        .tab-menu { background: #34495e; display: flex; }
+        .tab-btn { background: none; border: none; color: white; padding: 15px 25px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .tab-btn:hover, .tab-btn.active { background: #2980b9; }
+
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* Form Inputs */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        
+        button.btn { padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button.btn:hover { background: #219150; }
+        button.btn-danger { background: #e74c3c; }
+        button.btn-danger:hover { background: #c0392b; }
+        button.btn-edit { background: #f39c12; padding: 5px 10px; font-size: 14px; }
+        button.btn-delete { background: #e74c3c; padding: 5px 10px; font-size: 14px; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #2c3e50; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+
+        /* Mobile View (Student Portal) */
+        #mobilePortal { text-align: center; display: none; margin-top: 50px; }
+        #mobilePortal input { width: 80%; padding: 15px; font-size: 18px; margin-bottom: 20px; text-align: center; }
+        #mobilePortal button { width: 80%; padding: 15px; font-size: 18px; }
+        
+        .msg { padding: 10px; border-radius: 5px; font-weight: bold; margin-top: 15px; display: none; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div id="mobilePortal" class="container">
+        <h2 style="color:#2c3e50;">Innovision Tech Computers</h2>
+        <p>हजेरी लावण्यासाठी तुमचा ID टाका</p>
+        <input type="text" id="studAttId" placeholder="उदा. WD-01">
+        <br>
+        <button class="btn" onclick="markAttendance()">Mark Attendance</button>
+        <div id="attMsg" class="msg"></div>
+    </div>
+
+    <div id="adminPanel">
+        <div class="navbar">
+            <h2>Innovision Tech - Admin Dashboard</h2>
+            <span id="currentDate" style="font-weight: bold;"></span>
+        </div>
+
+        <div class="tab-menu">
+            <button class="tab-btn active" onclick="showTab('manageStudents')">👨‍🎓 Manage Students</button>
+            <button class="tab-btn" onclick="showTab('liveAttendance')">⏱️ Live Attendance</button>
+        </div>
+
+        <div class="container">
+            
+            <div id="manageStudents" class="section active">
+                <h3 style="color: #2980b9;">विद्यार्थ्याची माहिती (Add / Edit Student)</h3>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>Student ID</label>
+                        <input type="text" id="sId" placeholder="उदा. WD-01">
+                    </div>
+                    <div class="form-group" style="flex: 2; min-width: 200px;">
+                        <label>Full Name</label>
+                        <input type="text" id="sName" placeholder="विद्यार्थ्याचे पूर्ण नाव">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>Mobile Number</label>
+                        <input type="text" id="sPhone" placeholder="मोबाईल नंबर">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>Course</label>
+                        <select id="sCourse">
+                            <option value="Web Design">Web Design</option>
+                            <option value="Graphic Design">Graphic Design</option>
+                            <option value="Tally">Tally / Accounting</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn" id="saveBtn" onclick="saveStudent()">Save / Update Student</button>
+                <button class="btn btn-danger" onclick="clearForm()" style="margin-left: 10px;">Clear Form</button>
+
+                <hr style="margin: 30px 0; border-top: 1px solid #ccc;">
+
+                <h3 style="color: #2980b9;">सर्व विद्यार्थी (All Students List)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Mobile</th>
+                            <th>Course</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <tr><td colspan="5">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="liveAttendance" class="section">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h3 style="color: #2980b9;">स्कॅन करण्यासाठी QR कोड</h3>
+                    <p>विद्यार्थ्यांना हा QR स्कॅन करायला सांगा.</p>
+                    <div id="qrcode" style="display: flex; justify-content: center; margin: 15px 0;"></div>
+                </div>
+
+                <h3 style="color: #2980b9;">आजची हजेरी (Today's Live Log)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>In Time</th>
+                            <th>Out Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <tr><td colspan="4">Waiting for attendance...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Firebase Initialization ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-q_6DQheMsyYfCsBUruNzXX7aAGGzhhs",
+            authDomain: "attendence-b69b6.firebaseapp.com",
+            projectId: "attendence-b69b6",
+            storageBucket: "attendence-b69b6.firebasestorage.app",
+            messagingSenderId: "909264149058",
+            appId: "1:909264149058:web:40b368b4755a4f52a26bdb",
+            measurementId: "G-1ERLD5E477"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const todayDate = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+        document.getElementById('currentDate').innerText = "Date: " + todayDate;
+
+        // --- 2. View Routing (Admin vs Student) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const isStudent = urlParams.get('role') === 'student';
+
+        if (isStudent) {
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('mobilePortal').style.display = 'block';
+        } else {
+            // Generate QR for Admin
+            const studentUrl = "https://attendence-b69b6.firebaseapp.com/?role=student";
+            new QRCode(document.getElementById("qrcode"), { text: studentUrl, width: 200, height: 200 });
+            
+            // Load Data
+            fetchStudents();
+            listenAttendance();
+        }
+
+        // --- 3. UI Tab Logic ---
+        function showTab(tabId) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // --- 4. Manage Students (CRUD) ---
+        function saveStudent() {
+            const id = document.getElementById('sId').value.trim().toUpperCase();
+            const name = document.getElementById('sName').value.trim();
+            const phone = document.getElementById('sPhone').value.trim();
+            const course = document.getElementById('sCourse').value;
+
+            if(!id || !name || !phone) { alert("कृपया सर्व माहिती भरा!"); return; }
+
+            db.collection("StudentsMaster").doc(id).set({
+                name: name,
+                phone: phone,
+                course: course,
+                addedOn: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("विद्यार्थ्याची माहिती यशस्वीरित्या सेव्ह झाली!");
+                clearForm();
+            }).catch(error => alert("Error: " + error.message));
+        }
+
+        function clearForm() {
+            document.getElementById('sId').value = "";
+            document.getElementById('sName').value = "";
+            document.getElementById('sPhone').value = "";
+            document.getElementById('sId').disabled = false; // Enable ID field
+            document.getElementById('saveBtn').innerText = "Save / Update Student";
+        }
+
+        function fetchStudents() {
+            db.collection("StudentsMaster").onSnapshot((snapshot) => {
+                const tbody = document.getElementById('studentTableBody');
+                tbody.innerHTML = "";
+                
+                if(snapshot.empty) {
+                    tbody.innerHTML = "<tr><td colspan='5'>अजून कोणताही विद्यार्थी ॲड केलेला नाही.</td></tr>";
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const id = doc.id;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><b>${id}</b></td>
+                            <td>${data.name}</td>
+                            <td>${data.phone}</td>
+                            <td>${data.course}</td>
+                            <td>
+                                <button class="btn btn-edit" onclick="editStudent('${id}', '${data.name}', '${data.phone}', '${data.course}')">Edit</button>
+                                <button class="btn btn-delete" onclick="deleteStudent('${id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        function editStudent(id, name, phone, course) {
+            document.getElementById('sId').value = id;
+            document.getElementById('sId').disabled = true; // Cannot edit ID
+            document.getElementById('sName').value = name;
+            document.getElementById('sPhone').value = phone;
+            document.getElementById('sCourse').value = course;
+            
+            document.getElementById('saveBtn').innerText = "Update Student";
+            window.scrollTo(0, 0); // Scroll to top
+        }
+
+        function deleteStudent(id) {
+            if(confirm(`तुम्हाला नक्की विद्यार्थी (${id}) डिलीट करायचा आहे का?`)) {
+                db.collection("StudentsMaster").doc(id).delete();
+            }
+        }
+
+        // --- 5. Attendance Logic (Student Mobile) ---
+        function markAttendance() {
+            const studId = document.getElementById('studAttId').value.trim().toUpperCase();
+            const msgBox = document.getElementById('attMsg');
+            
+            if (!studId) { showMsg("कृपया तुमचा ID टाका!", "error", msgBox); return; }
+
+            // Check if student exists in Master Database
+            db.collection("StudentsMaster").doc(studId).get().then((docMaster) => {
+                if (!docMaster.exists) {
+                    showMsg("हा ID सिस्टीममध्ये नाही. कृपया एडमिनशी संपर्क साधा.", "error", msgBox);
+                    return;
+                }
+
+                const studentName = docMaster.data().name;
+                const timeNow = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const attRef = db.collection('Attendance').doc(todayDate).collection('Logs').doc(studId);
+
+                attRef.get().then((docAtt) => {
+                    if (!docAtt.exists) {
+                        attRef.set({ name: studentName, inTime: timeNow, outTime: "" })
+                              .then(() => showMsg(`✅ <b>${studentName}</b>: In-Time (${timeNow}) नोंदवला!`, "success", msgBox));
+                    } else {
+                        if (docAtt.data().outTime === "") {
+                            attRef.update({ outTime: timeNow })
+                                  .then(() => showMsg(`✅ <b>${studentName}</b>: Out-Time (${timeNow}) नोंदवला!`, "success", msgBox));
+                        } else {
+                            showMsg(`⚠️ <b>${studentName}</b>: तुमची आजची हजेरी पूर्ण झाली आहे.`, "error", msgBox);
+                        }
+                    }
+                });
+            }).catch(error => showMsg("Error: " + error.message, "error", msgBox));
+        }
+
+        function showMsg(text, type, element) {
+            element.innerHTML = text;
+            element.className = "msg " + type;
+            element.style.display = "block";
+            setTimeout(() => { element.style.display = "none"; document.getElementById('studAttId').value = ""; }, 4000);
+        }
+
+        // --- 6. Live Attendance Log (Admin Panel) ---
+        function listenAttendance() {
+            db.collection('Attendance').doc(todayDate).collection('Logs')
+              .onSnapshot((snapshot) => {
+                const tbody = document.getElementById('attendanceTableBody');
+                tbody.innerHTML = "";
+
+                if (snapshot.empty) {
+                    tbody.innerHTML = "<tr><td colspan='4'>आज अजून कोणतीही हजेरी लागलेली नाही.</td></tr>";
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><b>${doc.id}</b></td>
+                            <td>${data.name}</td>
+                            <td style="color:green; font-weight:bold;">${data.inTime || '-'}</td>
+                            <td style="color:blue; font-weight:bold;">${data.outTime || 'Pending'}</td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+    </script>
+</body>
+</html>
