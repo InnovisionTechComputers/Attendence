@@ -146,9 +146,8 @@
             document.getElementById('adminPanel').style.display = 'none';
             document.getElementById('mobilePortal').style.display = 'block';
         } else {
-            // !!!!!!! महत्त्वाची लिंक !!!!!!!
-            // इथे खाली तुमची Vercel ची लिंक टाका (जसे की: "https://innovision-tech.vercel.app/?role=student")
-            const studentUrl = "https://attendence-b69b6.firebaseapp.com/?role=student"; 
+            // !!!!!!! तुमची नवीन Vercel ची लिंक इथे अपडेट केली आहे !!!!!!!
+            const studentUrl = "https://attendence-beta-lovat.vercel.app/?role=student"; 
             
             new QRCode(document.getElementById("qrcode"), { text: studentUrl, width: 200, height: 200 });
             fetchStudents();
